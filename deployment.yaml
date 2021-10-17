@@ -1,0 +1,53 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: sftp
+  namespace: sftp
+  labels:
+    environment: production
+    app: sftp
+spec:
+  # how many pods and indicate which strategy we want for rolling update
+  replicas: 1
+  minReadySeconds: 10
+  selector:
+    matchLabels:
+      environment: production
+      app: sftp
+
+  template:
+    metadata:
+      labels:
+        environment: production
+        app: sftp
+
+    spec:
+      # secrets and config
+      volumes:
+        - name: sftp-client-public-keys
+          secret:
+            secretName: sftp-client-public-keys
+            defaultMode: 0600
+        
+
+      containers:
+        # the sftp server itself
+        - name: sftp
+          # use kalioz/sftp:latest instead of atmoz/sftp:latest if you need arm compatibility
+          image: atmoz/sftp:latest
+          imagePullPolicy: IfNotPresent
+          # create users and dirs
+          # user:password:uid:gid:directories
+          args: ["root:3:0:0:/root:/bin/bash"]
+
+          ports:
+            - containerPort: 22
+          volumeMounts:
+            - mountPath: /home/root/.ssh/keys
+              name: sftp-client-public-keys
+              readOnly: true
+           
+          securityContext:
+            capabilities:
+              add: ["SYS_ADMIN"]
+          resources: {}
